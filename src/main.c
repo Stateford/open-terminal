@@ -10,6 +10,20 @@
 bool getFocusedWindowId(char* const path, int size);
 bool getPath(const char* const path, char* const dest, int size);
 bool parsePath(const char* const path, char* const dest, int size);
+bool hasIllegalCharacters(const char* const str);
+
+bool hasIllegalCharacters(const char* const str) {
+    static const char* const illegalChars = ";,|[]\\/*.\"";
+
+    for(unsigned int i = 0; i < strlen(str); i++) {
+        for(unsigned int p = 0; p < strlen(illegalChars); p++) {
+            if(str[i] == illegalChars[p])
+                return false;
+        }
+    }
+
+    return true;
+}
 
 bool getFocusedWindowId(char* const path, int size) {
     FILE *file = NULL;
@@ -48,10 +62,14 @@ bool getPath(const char* const command, char* const dest, int size) {
             dest[i] = '\0';
         }
     }
+
+    const int result = pclose(file);
+
     if(strlen(dest) == 0)
         return false;
-    
-    const int result = pclose(file);
+
+    if(hasIllegalCharacters(dest))
+        return false;
 
     return true;
 }
