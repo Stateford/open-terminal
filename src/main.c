@@ -2,46 +2,44 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdbool.h>
 
 #define MAX 1024
-#define TERMINAL "urxvt"
 #define ACTIVE_WINDOW_COMMAND "xprop -root 32x '\t$0' _NET_ACTIVE_WINDOW | cut -f 2"
 
-void getFocusedWindowId(char* const path, int size);
-void getPath(const char* const path, char* const dest, int size);
-void parsePath(const char* const path, char* const dest, int size);
+bool getFocusedWindowId(char* const path, int size);
+bool getPath(const char* const path, char* const dest, int size);
+bool parsePath(const char* const path, char* const dest, int size);
 
-void getFocusedWindowId(char* const path, int size) {
+bool getFocusedWindowId(char* const path, int size) {
     FILE *file = NULL;
     file = popen(ACTIVE_WINDOW_COMMAND, "r");
 
-    if(file == NULL) {
-        printf("ERROR");
-        exit(1);
-    }
+    if(file == NULL)
+        return false;
 
     /* Read the output a line at a time - output it. */
-      while (fgets(path, size, file) != NULL) {
-      }
+      while (fgets(path, size, file) != NULL) {}
 
       for(unsigned int i = 0; i < strlen(path); i++) {
           if(path[i] == '\n') {
               path[i] = '\0';
           }
       }
+      if(strlen(path) == 0)
+          return false;
 
       /* close */
-      pclose(file);
+      const int result = pclose(file);
+      return true;
 }
 
-void getPath(const char* const command, char* const dest, int size) {
+bool getPath(const char* const command, char* const dest, int size) {
     FILE *file = NULL;
     file = popen(command, "r");
 
-    if(file==NULL) {
-        printf("ERROR");
-        exit(1);
-    }
+    if(file==NULL)
+        return false;
 
     while(fgets(dest, size, file) != NULL) {}
 
@@ -50,12 +48,16 @@ void getPath(const char* const command, char* const dest, int size) {
             dest[i] = '\0';
         }
     }
+    if(strlen(dest) == 0)
+        return false;
     
-    pclose(file);
+    const int result = pclose(file);
+
+    return true;
 }
 
-void parsePath(const char* const path, char* const dest, int size) {
-    int startCopying = 0;
+bool parsePath(const char* const path, char* const dest, int size) {
+    int startCopying = false;
     int copyPosition = 0;
     for(unsigned int i = 0; i < strlen(path); i++) {
         if(startCopying) {
@@ -71,9 +73,14 @@ void parsePath(const char* const path, char* const dest, int size) {
             copyPosition++;
         }
         else if(path[i] == ':') {
-            startCopying = 1;
+            startCopying = true;
         }
     }
+
+    if(!startCopying || strlen(dest) == 0)
+        return false;
+
+    return true;
 }
 
 int main() {
@@ -82,15 +89,18 @@ int main() {
 
     char windowId[MAX];
 
-    getFocusedWindowId(windowId, sizeof(windowId) - 1);
+    bool result = getFocusedWindowId(windowId, sizeof(windowId) - 1);
+    if(!result)
+        goto failure;
 
     char command[MAX];
     snprintf(command, sizeof(command) -1, "xprop -id %s _NET_WM_NAME", windowId);
 
-    printf("%s", command);
 
     char path[MAX];
-    getPath(command, path, sizeof(path) - 1);
+    result = getPath(command, path, sizeof(path) - 1);
+    if(!result)
+        goto failure;
 
     char finalPath[MAX];
     parsePath(path, finalPath, sizeof(finalPath));
@@ -98,6 +108,10 @@ int main() {
     snprintf(finalCommand, sizeof(finalCommand), "i3-sensible-terminal -cd %s", finalPath);
 
     system(finalCommand);
+    return 0;
+
+failure:
+    system("i3-sensible-terminal");
 
     return 0;
 }
