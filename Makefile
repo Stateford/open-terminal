@@ -9,7 +9,7 @@ release:
 .PHONY: release
 
 debug:
-	${COMPILER} ${SOURCE_FILES} -o ${PROJECT_NAME}
+	${COMPILER} -Wall ${SOURCE_FILES} -o ${PROJECT_NAME}
 .PHONY: debug
 
 run: debug
